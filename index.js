@@ -20,7 +20,7 @@ async function run() {
 
   const labelsToRemove = getLabelsToRemove();
 
-  const isIssue = "issue" in payload;
+  const isIssue = Object.hasOwn(payload, "issue");
   const [target, issueOrPullReadable] = isIssue
     ? [payload.issue, "issue"]
     : [payload.pull_request, "pull request"];
