@@ -1,7 +1,6 @@
-const core = require('@actions/core');
-
-const {getLabelsToRemove} = require("./../index");
-
+import * as core from "@actions/core";
+import { getLabelsToRemove } from "./../index";
+import { describe, test, expect, vi } from "vitest";
 
 const labelsInputsCases = [
   ["duplicate", ["duplicate"]],
@@ -17,17 +16,17 @@ const labelsInputsCases = [
 
   // sort
   ["foo\nbar", ["bar", "foo"]],
-  ["c\nb\n\r\ta", ["a", "b", "c"]]
+  ["c\nb\n\r\ta", ["a", "b", "c"]],
 ];
 
+vi.mock("@actions/core", { spy: true });
+
 describe("Get labels to remove", () => {
-  test.each(labelsInputsCases)(
-    "%s ⇢ %p",
-    (input, output) => {
-      const getInputMock = jest.spyOn(core, 'getInput');
-      getInputMock.mockImplementationOnce(() => input);
-      expect(getLabelsToRemove()).toEqual(output);
-      getInputMock.mockRestore();
-    }
-  );
+  test.each(labelsInputsCases)("%s ⇢ %p", (input, output) => {
+    vi.spyOn(core, "getInput").mockReturnValue(input);
+
+    expect(getLabelsToRemove()).toEqual(output);
+
+    vi.restoreAllMocks();
+  });
 });

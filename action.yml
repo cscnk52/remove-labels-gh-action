@@ -1,15 +1,15 @@
-name: 'Remove labels'
-description: 'Remove pull requests labels'
+name: "Remove labels"
+description: "Remove pull requests labels"
 branding:
-  icon: 'edit'
-  color: 'yellow'
+  icon: "edit"
+  color: "yellow"
 inputs:
   token:
-    description: 'Github token'
+    description: "Github token"
     required: true
   labels:
-    description: 'Labels to remove'
+    description: "Labels to remove"
     required: true
 runs:
-  using: 'node20'
-  main: 'dist/index.js'
+  using: "node24"
+  main: "dist/index.js"

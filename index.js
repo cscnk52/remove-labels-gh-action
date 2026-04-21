@@ -1,73 +1,75 @@
-const core = require('@actions/core');
-const github = require('@actions/github');
+import * as core from "@actions/core";
+import * as github from "@actions/github";
 
 const multilineStringToArray = (value) => {
-  return value.split("\n")
-              .map(line => line.trim())
-              .filter(line => line)
-              .sort();
-}
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line)
+    .sort();
+};
 
 const getLabelsToRemove = () => {
   return multilineStringToArray(core.getInput("labels"));
-}
+};
 
-const run = async function() {
+async function run() {
   const payload = github.context.payload;
   const token = core.getInput("token");
-  const client = new github.getOctokit(token);
+  const client = github.getOctokit(token);
 
   const labelsToRemove = getLabelsToRemove();
 
-  const isIssue = Object.prototype.hasOwnProperty.call(payload, "issue");
-  const issueOrPullNumber = payload[isIssue ? "issue" : "pull_request"].number,
-        issueOrPullReadable = isIssue ? "issue" : "pull request";
+  const isIssue = "issue" in payload;
+  const [target, issueOrPullReadable] = isIssue
+    ? [payload.issue, "issue"]
+    : [payload.pull_request, "pull request"];
 
-  const {data: labelsData} = await client.rest.issues.listLabelsOnIssue({
+  const issueOrPullNumber = target.number;
+
+  const { data: labelsData } = await client.rest.issues.listLabelsOnIssue({
     ...github.context.repo,
-    issue_number: issueOrPullNumber
+    issue_number: issueOrPullNumber,
   });
 
-  const filteredLabelsToRemove =
-    labelsData.map(l => l.name)
-              .filter(labelName => labelsToRemove.includes(labelName))
-              .sort();
+  const filteredLabelsToRemove = labelsData
+    .map((l) => l.name)
+    .filter((labelName) => labelsToRemove.includes(labelName))
+    .sort();
 
-  filteredLabelsToRemove.forEach((labelName) => {
-    const foundLabelMessage = `Found label "${labelName}" in`
-                            + ` ${issueOrPullReadable} #${issueOrPullNumber}.`;
-    core.info(foundLabelMessage);
+  for (const labelName of filteredLabelsToRemove) {
+    core.info(
+      `Found label "${labelName}" in ${issueOrPullReadable} #${issueOrPullNumber}.`
+    );
 
-    client.rest.issues.removeLabel({
-      ...github.context.repo,
-      issue_number: issueOrPullNumber,
-      name: labelName,
-    }).then((response) => {
-      if (response.status === 200) {
-        const successMessage = `\u001b[92mLabel "${labelName}" successfully`
-                             + ` removed from ${issueOrPullReadable}`
-                             + ` #${issueOrPullNumber}.`;
-        core.info(successMessage);
+    try {
+      const { status } = await client.rest.issues.removeLabel({
+        ...github.context.repo,
+        issue_number: issueOrPullNumber,
+        name: labelName,
+      });
+
+      if (status === 200) {
+        core.info(
+          `Label "${labelName}" successfully removed from ${issueOrPullReadable} #${issueOrPullNumber}.`
+        );
       } else {
-        const warningMessage = `\u001b[93mUnexpected response status code`
-                           + ` "${response.status}" in remove label request`
-                           + ` response. DETAILS:\n${response}`;
-        core.warning(warningMessage);
+        core.warning(
+          `Unexpected status "${status}" when removing label "${labelName}".`
+        );
       }
-    }).catch((err) => {
-      const errorMessage = `\u001b[91mError removing label "${labelName}"`
-                         + ` from ${issueOrPullReadable}`
-                         + ` #${issueOrPullNumber}: ${err.message}`;
-      core.setFailed(errorMessage);
-    });
-  });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      core.setFailed(
+        `Error removing label "${labelName}" from ${issueOrPullReadable} #${issueOrPullNumber}: ${message}`
+      );
+    }
+  }
 }
 
-if (require.main === module) {
-    run();
+if (import.meta.main) {
+  run();
 }
 
-module.exports = {
-  getLabelsToRemove,
-  run
-}
+export { getLabelsToRemove, run };
